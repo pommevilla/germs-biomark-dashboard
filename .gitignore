@@ -35,5 +35,11 @@ vignettes/*.pdf
 *.utf8.md
 *.knit.md
 
-# R Environment Variables
+# Environmental stuff
 .Renviron
+.env
+.vscode
+
+# Local practice files
+practice/
+
