@@ -1,0 +1,101 @@
+---
+title: "GERMS BioMark Dashboard"
+runtime: shiny
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+source("setup.R")
+```
+
+Inputs {.sidebar data-width=300}
+=======================================================================
+
+```{r}
+pickerInput(
+  "biomark_file_choice",
+  label = h4("BioMark file:"),
+  choices = unique(all_biomark_runs$filename),
+  multiple = TRUE,
+  selected = all_biomark_runs$filename[1],
+  options = pickerOptions(
+    liveSearch = TRUE,
+    actionsBox = TRUE
+  )
+)
+```
+
+```{r}
+# Updating all the user choices
+biomark_file_selected <- reactive(input$biomark_file_choice)
+```
+
+
+```{r}
+
+```
+
+# Run data
+
+## Column
+
+### Run data for `r renderText(biomark_file_selected())`
+
+```{r}
+renderDT(
+  all_biomark_data
+)
+```
+
+
+# Richness
+
+## Column
+
+### CT by group
+
+```{r}
+pickerInput(
+  "grouping_factor",
+  label = h4("Group by: "),
+  choices = c("fert_level", "crop", "addition", "timepoint"),
+  selected = "fert_level",
+  options = pickerOptions(
+    liveSearch = TRUE
+  )
+)
+
+grouping_factor_picked <- reactive(input$grouping_factor %>% as.factor())
+```
+
+
+```{r}
+renderPlotly({
+  
+  all_biomark_data %>% 
+    select(-`16S`) %>% 
+    pivot_longer(contains("amoA"), names_to = "amoA") %>% 
+    ggplot(aes(sample_name, amoA, fill = value)) +
+    geom_tile(color = "black") +
+    facet_grid(~ get(input$grouping_factor), scales = "free") +
+    labs(
+      x = "",
+      y = ""
+    ) +
+    scale_y_discrete(limits = rev) +
+    scale_fill_viridis_c(
+      direction = -1,
+      option = "magma"
+    ) +
+    theme(
+      strip.text = element_markdown(size = 10, face = "bold"),
+      strip.background = element_rect(size = 1, color = "blaCk", fill = NA)
+    ) 
+})
+```
+
+
+
