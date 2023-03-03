@@ -15,27 +15,89 @@ Inputs {.sidebar data-width=300}
 =======================================================================
 
 ```{r}
+# Input for Biomark file name
 pickerInput(
   "biomark_file_choice",
   label = h4("BioMark file:"),
   choices = unique(all_biomark_runs$filename),
-  multiple = TRUE,
   selected = all_biomark_runs$filename[1],
   options = pickerOptions(
-    liveSearch = TRUE,
-    actionsBox = TRUE
+    liveSearch = TRUE
   )
 )
 ```
 
 ```{r}
-# Updating all the user choices
-biomark_file_selected <- reactive(input$biomark_file_choice)
+# Download buttons for selected BioMark csv
+uiOutput("downloadUI")
+```
+
+```{r}
+# Create the actual downloadButton
+output$downloadUI <- renderUI({
+  downloadButton("downBtn", "Download selected BioMark data", style = "width:100%;")
+})
+
+# Add download handling
+output$downBtn <- downloadHandler(
+  filename = function() {
+    biomark_file_selected()
+  },
+  content = function(file) {
+    write.csv(selected_run_data(), file, row.names = FALSE)
+  }
+)
 ```
 
 
 ```{r}
+biomark_file_selected <- reactive(input$biomark_file_choice)
 
+# Constructs the mongoDB query when the selected biomark file is changed
+file_query <- reactive(
+  paste0(
+    '{"filename": "', biomark_file_selected(),'"}'
+  )
+)
+
+## Update plotting info based on current file
+current_biomark_run_measured_genes <- reactive(
+    all_biomark_runs %>%
+      filter(filename == biomark_file_selected()) %>%
+      pull(genes_measured) %>% 
+      unlist()
+)
+
+current_biomark_sample_names <- reactive(
+    all_biomark_runs %>%
+      filter(filename == biomark_file_selected()) %>%
+      pull(sample_names) 
+)
+
+current_biomark_run_factors <- reactive(
+  all_biomark_runs %>%
+    filter(filename == biomark_file_selected()) %>%
+    pull(factors) %>%
+    unlist()
+)
+
+current_biomark_data_type <- reactive(
+  all_biomark_runs %>%
+    filter(filename == biomark_file_selected()) %>%
+    pull(data_type)
+)
+
+# Use the open connection to get the selected dataset.
+selected_run_data <- reactive(
+  all_biomark_data_con$find(file_query()) %>%
+    as_tibble() %>% 
+    mutate(
+      across(
+        c(current_biomark_run_measured_genes()),
+        as.numeric
+      )
+    )
+)
 ```
 
 # Run data
@@ -46,44 +108,63 @@ biomark_file_selected <- reactive(input$biomark_file_choice)
 
 ```{r}
 renderDT(
-  all_biomark_data
+  selected_run_data(),
+  options = list(
+    pageLength = 25
+  )
+
 )
 ```
 
 
-# Richness
+# Heatmap
 
 ## Column
 
-### CT by group
+### Heatmap for `r renderText(biomark_file_selected())`
 
 ```{r}
+# Create the picker Input
 pickerInput(
   "grouping_factor",
   label = h4("Group by: "),
-  choices = c("fert_level", "crop", "addition", "timepoint"),
-  selected = "fert_level",
+  choices = "Select sample to get started",
+  # selected = "This",
   options = pickerOptions(
     liveSearch = TRUE
   )
 )
 
-grouping_factor_picked <- reactive(input$grouping_factor %>% as.factor())
-```
+# Update PickerInput choices
+observeEvent(
+  input$biomark_file_choice, {
+    updatePickerInput(
+      session = session,
+      inputId = "grouping_factor",
+      choices = current_biomark_run_factors(),
+      selected = current_biomark_run_factors()[1]
+    )
+  }
+)
 
 
-```{r}
+grouping_factor_picked <- reactive(input$grouping_factor)
+
+HTML("<br><br>")
+
 renderPlotly({
+  # req(nrow(selected_run_data()) > 0)
+  # req(length(grouping_factor_picked()) > 0)
   
-  all_biomark_data %>% 
-    select(-`16S`) %>% 
-    pivot_longer(contains("amoA"), names_to = "amoA") %>% 
-    ggplot(aes(sample_name, amoA, fill = value)) +
-    geom_tile(color = "black") +
+  p <-  selected_run_data() %>%
+    pivot_longer(current_biomark_run_measured_genes()) %>%
+    ggplot(aes(!!as.symbol(current_biomark_sample_names()), name, fill = value)) +
+    geom_tile(color = "#EEEEEE") +
     facet_grid(~ get(input$grouping_factor), scales = "free") +
     labs(
       x = "",
-      y = ""
+      y = "",
+      fill = current_biomark_data_type()
     ) +
     scale_y_discrete(limits = rev) +
     scale_fill_viridis_c(
@@ -92,10 +173,34 @@ renderPlotly({
     ) +
     theme(
       strip.text = element_markdown(size = 10, face = "bold"),
-      strip.background = element_rect(size = 1, color = "blaCk", fill = NA)
-    ) 
+      strip.background = element_rect(size = 1, color = "black", fill = NA),
+      panel.background = element_blank(),
+      panel.grid = element_blank(),
+      # panel.border = element_rect(color = "black", fill = NA),
+      axis.text.x = element_blank(),
+      axis.ticks = element_blank()
+    )
+  
+  ggplotly(p, height = 800)
 })
 ```
 
+# All runs
 
+## Column
 
+### Summary data for all runs
+
+```{r}
+renderDT(
+  datatable(
+    all_biomark_runs %>% 
+      select(-c(genes_measured, factors)) %>% 
+      rename(genes_measured = nice_genes_measured, factors = nice_factors) %>% 
+      select(filename, project_name, genes_measured, factors, data_type, uploaded_by),
+    options = list(
+      autoWidth = TRUE
+    )
+  )
+)
+```

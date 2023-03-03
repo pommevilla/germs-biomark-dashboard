@@ -20,8 +20,14 @@ all_biomark_runs_con <- mongo(
   url = connection_string
 )
 
+# The mutate...paste statements collapse the list in MongoDB to a string with whitespace
+# so that the renderDT calls can probably wrap them
 all_biomark_runs <- all_biomark_runs_con$find() %>% 
-  as_tibble()
+  as_tibble() %>% 
+  group_by(filename) %>% 
+  mutate(nice_genes_measured = paste(genes_measured %>% unlist(), collapse = ", ")) %>% 
+  mutate(nice_factors = paste(factors %>% unlist(), collapse = ", ")) %>% 
+  ungroup()
 
 ## Loading in all biomark data
 
@@ -34,12 +40,5 @@ all_biomark_data_con <- mongo(
   url = connection_string
 )
 
-all_biomark_data <- all_biomark_data_con$find() %>% 
-  as_tibble()
-
-# blast_results <- all_blast_results_collection$find() %>% 
-#   as_tibble() %>% 
-#   mutate(across(
-#     pident:bitscore,
-#     ~ as.numeric(.)
-#   )) 
+# tester <- all_biomark_data_con$find('{"filename": "priming_amoA_rawCt.csv"}') %>% 
+#   as_tibble()
