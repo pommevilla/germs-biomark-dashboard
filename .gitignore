@@ -39,6 +39,7 @@ vignettes/*.pdf
 .Renviron
 .env
 .vscode
+Rplots.pdf
 
 # Local practice files
 practice/
