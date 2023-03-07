@@ -1,0 +1,8 @@
+.active-pane-options {
+    display: inline-flex;
+    gap: 15px;
+}
+
+.chart-title {
+    color: red;
+}

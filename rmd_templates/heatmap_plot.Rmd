@@ -1,0 +1,55 @@
+---
+title: "heatmap_plot"
+output: html_document
+date: "2023-03-07"
+params:
+  grouping_factor: NA
+  file_name: NA
+  biomark_data: NA
+  sample_names: NA
+  measured_genes: NA
+  biomark_data_type: NA
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+grouping_factor <- params$grouping_factor[1]
+file_name <- params$file_name
+biomark_data <- params$biomark_data
+sample_names <- params$sample_names
+measured_genes <- params$measured_genes
+biomark_data_type <- params$biomark_data_type
+```
+
+
+```{r, echo=FALSE}
+print(params)
+```
+
+
+```{r}
+biomark_data %>%
+    pivot_longer(measured_genes) %>%
+    ggplot(aes(get(sample_names), name, fill = value)) +
+    geom_tile() +
+    facet_grid(paste0("~", grouping_factor), scales = "free") +
+    labs(
+      x = "",
+      y = "",
+      fill = biomark_data_type
+    ) +
+    scale_y_discrete(limits = rev) +
+    scale_fill_viridis_c(
+      direction = -1,
+      option = "magma"
+    ) +
+    theme(
+      strip.text = element_markdown(size = 10, face = "bold"),
+      strip.background = element_rect(size = 1, color = "black", fill = NA),
+      panel.background = element_blank(),
+      panel.grid = element_blank(),
+      axis.text.x = element_blank(),
+      axis.ticks = element_blank()
+    )
+```
+
