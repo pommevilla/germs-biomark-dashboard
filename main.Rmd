@@ -146,13 +146,17 @@ pickerInput(
   </div>
   <div>
 
+  <label class="control-label">
+    <h4> Download... </h4>
+  </label>
+    
 ```{r}
 uiOutput("download_heatmap_ui")
 ```
 
 ```{r}
 output$download_heatmap_ui <- renderUI({
-  downloadButton("download_heatmap_button", "Download Heatmap:")
+  downloadButton("download_heatmap_button", "Download Heatmap")
 })
 
 output$download_heatmap_button <- downloadHandler(
@@ -243,8 +247,7 @@ renderPlotly({
       axis.ticks = element_blank()
     ) 
   
-  # ggplotly(p)
-  p
+  ggplotly(p, height = 800)
 })
 ```
 
