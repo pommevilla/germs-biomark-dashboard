@@ -21,7 +21,7 @@ pickerInput(
   "biomark_file_choice",
   label = h4("BioMark file:"),
   choices = unique(all_biomark_runs$filename),
-  selected = all_biomark_runs$filename[1],
+  selected = all_biomark_runs$filename[2],
   options = pickerOptions(
     liveSearch = TRUE
   )
@@ -95,14 +95,14 @@ selected_run_data <- reactive(
     as_tibble() %>% 
     mutate(
       across(
-        c(current_biomark_run_measured_genes()),
+        any_of(current_biomark_run_measured_genes()),
         as.numeric
       )
     )
 )
 ```
 
-# Run data
+# Selected run data
 
 ## Column
 
@@ -136,7 +136,6 @@ pickerInput(
   "grouping_factor",
   label = h4("Group by: "),
   choices = default_value,
-  # selected = "This",
   options = pickerOptions(
     liveSearch = TRUE
   )
@@ -250,6 +249,85 @@ renderPlotly({
   ggplotly(p, height = 800)
 })
 ```
+
+# Statistics
+
+## Column
+
+### ANOVA Results
+
+Note that if there are factor levels missing, it is because of defects in the data.
+
+```{r}
+anova_results <- reactive({
+  
+  factor_formula_string <- paste0(current_biomark_run_factors(), collapse = " + ")
+  
+  formulae <- lapply(
+    current_biomark_run_measured_genes(), function(x) as.formula(paste0(x, " ~ ", factor_formula_string))
+  )
+  
+  
+  res <- lapply(formulae, function(x) broom::tidy(aov(x, data = selected_run_data())))
+  names(res) <- format(formulae)
+  names(res) <- map(names(res) %>% str_split(., " "), ~ .x[[1]]) %>% unlist()
+  
+  res
+
+  anova_results <- lapply(seq_along(res), function(i) res[[i]] %>% mutate(gene = names(res)[[i]])) %>%
+    bind_rows() %>%
+    filter(term != "Residuals") %>%
+    mutate(sig = case_when(
+      p.value < 0.05 & p.value > 0.01 ~ "*",
+      p.value < 0.01 & p.value > 0.001 ~ "**",
+      p.value < 0.001 ~ "***",
+      TRUE ~ "NS"
+    ))
+
+  anova_results
+})
+```
+
+
+```{r}
+renderPlot({
+  anova_results() %>% 
+    ggplot(aes(gene, term, fill = sig)) + 
+    geom_tile(color = "black") + 
+    coord_equal() + 
+    labs(y = "",
+         x = "",
+         title = "Summary of ANOVA results",
+         fill = "Significance ") + 
+    theme(
+      plot.title = element_text(hjust = 0.5),
+      axis.text.x = element_text(angle = 90, hjust = 0, vjust = 0.5, margin = margin(t = 0)),
+      panel.background = element_blank(),
+      panel.grid = element_blank(),
+      axis.ticks = element_blank(),
+      axis.text.y = element_text(margin = margin(r = 0))
+    ) + 
+    scale_fill_viridis_d(option = "magma", direction = -1)
+  
+})
+```
+
+### ANOVA Table
+
+```{r}
+renderDT(
+  anova_results() %>% 
+    select(gene, term, p.value, sig, everything()),
+  extension = "Buttons",
+  options = list(
+    pageLength = 25,
+    dom = 'Blfrtip',
+    buttons = c("copy", "csv")
+  )
+)
+
+```
+
 
 # All runs
 
