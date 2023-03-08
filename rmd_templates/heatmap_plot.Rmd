@@ -1,5 +1,5 @@
 ---
-title: "heatmap_plot"
+title: "Heatmap Plot for `r params$file_name`"
 output: html_document
 date: "2023-03-07"
 params:
@@ -21,7 +21,6 @@ measured_genes <- params$measured_genes
 biomark_data_type <- params$biomark_data_type
 ```
 
-
 ```{r, echo=FALSE}
 print(params)
 ```
@@ -29,7 +28,7 @@ print(params)
 
 ```{r}
 biomark_data %>%
-    pivot_longer(measured_genes) %>%
+    pivot_longer(all_of(measured_genes)) %>%
     ggplot(aes(get(sample_names), name, fill = value)) +
     geom_tile() +
     facet_grid(paste0("~", grouping_factor), scales = "free") +
