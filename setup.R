@@ -8,9 +8,19 @@ library(gt)
 library(DT)
 library(plotly)
 library(mongolite)
+library(vegan)
 
+########### ggplot theme
+
+theme_set(
+  theme_light()
+)
+
+
+########### Setup
+
+# Read in MongoDB credentials/credential string
 readRenviron(".env")
-
 connection_string <- Sys.getenv("MONGODB_URI")
 
 ## Loading in all biomark run information

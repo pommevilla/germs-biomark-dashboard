@@ -328,6 +328,52 @@ renderDT(
 
 ```
 
+# NMDS
+
+## Column
+
+### Something
+
+```{r}
+this_nmds <- reactive(metaMDS(
+  selected_run_data() %>% 
+    select(any_of(current_biomark_run_measured_genes()))
+))
+
+site.scores <- reactive(scores(this_nmds(), display = "sites") %>% as.data.frame())
+```
+
+```{r}
+renderPlot({
+  nmds.plot <- site.scores() %>% 
+    ggplot(aes(NMDS1, NMDS2)) +  
+    geom_hline(
+      yintercept = 0.0,
+      colour = "grey",
+      lty = 2
+    ) +
+    geom_vline(
+      xintercept = 0.0,
+      colour = "grey",
+      lty = 2
+    ) +
+    geom_point(size = 4, shape = 21) + 
+    theme(
+      plot.title = element_text(hjust = 0.5),
+      legend.text = element_markdown(size = 12),
+      legend.title = element_markdown(size = 12, hjust = 0),
+      axis.text.x = element_text(size = 14),
+      axis.text.y = element_text(size = 14),
+      axis.title.x = element_text(size = 12),
+      axis.title.y = element_text(size = 12),
+      panel.grid = element_line(color = "gray95"),
+      panel.border = element_rect(color = "black", size = 1, fill = NA)
+    ) 
+  
+  nmds.plot
+})
+```
+
 
 # All runs
 
