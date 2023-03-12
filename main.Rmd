@@ -98,6 +98,12 @@ selected_run_data <- reactive(
         any_of(current_biomark_run_measured_genes()),
         as.numeric
       )
+    ) %>% 
+    mutate(
+      across(
+        any_of(current_biomark_run_factors()),
+        as.factor
+      )
     )
 )
 ```
@@ -332,7 +338,40 @@ renderDT(
 
 ## Column
 
-### Something
+### NMDS for `r renderText(biomark_file_selected())`
+
+Can I put some text here?
+
+
+```{r}
+# Picker input for the grouping factor
+nmds_color_default_factor <- "Select factor to color by:"
+
+pickerInput(
+  "nmds_coloring_factor",
+  label = h4("Color by: "),
+  choices = nmds_color_default_factor,
+  options = pickerOptions(
+    liveSearch = TRUE
+  )
+)
+```
+
+```{r}
+# Update PickerInput choices
+observeEvent(
+  input$biomark_file_choice, {
+    updatePickerInput(
+      session = session,
+      inputId = "nmds_coloring_factor",
+      choices = current_biomark_run_factors(),
+      selected = current_biomark_run_factors()[1]
+    )
+  }
+)
+
+nmds_coloring_factor_picked <- reactive(input$nmds_coloring_factor)
+```
 
 ```{r}
 this_nmds <- reactive(metaMDS(
@@ -340,12 +379,16 @@ this_nmds <- reactive(metaMDS(
     select(any_of(current_biomark_run_measured_genes()))
 ))
 
-site.scores <- reactive(scores(this_nmds(), display = "sites") %>% as.data.frame())
-```
+site.scores <- reactive(
+  scores(this_nmds(), display = "sites") %>% 
+    as.data.frame() %>% 
+    bind_cols(selected_run_data())
+                        
+                        
+)
 
-```{r}
-renderPlot({
-  nmds.plot <- site.scores() %>% 
+renderPlotly({
+  p <- site.scores() %>% 
     ggplot(aes(NMDS1, NMDS2)) +  
     geom_hline(
       yintercept = 0.0,
@@ -357,7 +400,7 @@ renderPlot({
       colour = "grey",
       lty = 2
     ) +
-    geom_point(size = 4, shape = 21) + 
+    geom_point(size = 4, shape = 21, aes(fill = !!as.symbol(nmds_coloring_factor_picked()))) + 
     theme(
       plot.title = element_text(hjust = 0.5),
       legend.text = element_markdown(size = 12),
@@ -370,7 +413,7 @@ renderPlot({
       panel.border = element_rect(color = "black", size = 1, fill = NA)
     ) 
   
-  nmds.plot
+   ggplotly(p, height = 800)
 })
 ```
 
